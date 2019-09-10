@@ -1,6 +1,6 @@
 import { createContext }                                           from 'preact';
 import { useContext, useDebugValue, useEffect, useMemo, useState } from 'preact/hooks';
-import { ActionFn, Listener, Store }                               from 'unistore';
+import { Action, ActionFn, Listener, Store }                       from 'unistore';
 
 
 // @see [typesafe-actions](https://github.com/piotrwitek/typesafe-actions)
@@ -93,8 +93,14 @@ export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K
 }
 
 
-export type ActionFnAsync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Promise<Partial<K>|void>|void;
-export type ActionFnSync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Partial<K>|void;
+interface ActionContext<K = RootState> {
+  readonly state: K;
+  setState<U extends keyof K>(update: Pick<K, U>, overwrite?: boolean, action?: Action<K>): void;
+  dispatch: Dispatch<K>;
+}
+
+export type ActionFnAsync<K = RootState> = (context: ActionContext<K>, ...args: any[]) => Promise<Partial<K>|void>|void;
+export type ActionFnSync<K = RootState> = (context: ActionContext<K>, ...args: any[]) => Partial<K>|void;
 export type AnyAction<K = RootState> = ActionFnAsync<K>|ActionFnSync<K>;
 export type AnyAC<K = RootState> = (...args: []) => AnyAction<K>;
 
@@ -106,10 +112,15 @@ export interface Dispatch<K = RootState> {
 
 function dispatch<K = RootState>(actionFn: ActionFnAsync<K>): Promise<void>;
 function dispatch<K = RootState>(actionFn: ActionFnSync<K>): void;
-function dispatch<K = RootState>(actionFn: ActionFn<K>) {
+function dispatch<K = RootState>(actionFn: ActionFnAsync<K>|ActionFnSync<K>) {
   const store = useStore<K>();
   const state = store.getState();
-  const mutated = actionFn(state, store);
+  const context: ActionContext<K> = {
+    state,
+    setState: store.setState,
+    dispatch,
+  };
+  const mutated = actionFn(context);
 
   if (mutated == null) {
     return;
@@ -117,11 +128,11 @@ function dispatch<K = RootState>(actionFn: ActionFn<K>) {
 
   if (typeof (mutated as Promise<Partial<K>>).then === 'function') {
     return (mutated as Promise<Partial<K>>).then(res => {
-      store.setState(res as Pick<K, keyof K>, false, actionFn);
+      store.setState(res as Pick<K, keyof K>, false, actionFn as any);
     });
   }
 
-  return store.setState(mutated as Pick<K, keyof K>, false, actionFn);
+  return store.setState(mutated as Pick<K, keyof K>, false, actionFn as any);
 }
 
 
