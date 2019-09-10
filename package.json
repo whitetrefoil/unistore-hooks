@@ -1,6 +1,6 @@
 {
   "name": "@whitetrefoil/unistore-hooks",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.4",
   "description": "A experimental hooks implement for unistore & preact",
   "keywords": [
     "preact",
@@ -10,6 +10,11 @@
   "main": "lib/common/main.js",
   "module": "lib/esm/main.js",
   "typings": "lib/types/main.d.ts",
+  "files": [
+    "lib",
+    "README.md",
+    "UNLICENSE"
+  ],
   "scripts": {
     "prepublishOnly": "node scripts/prepublish-checklist.js && npm run build",
     "build": "rimraf lib && tsc && tsc -p tsconfig.common.json",
@@ -32,7 +37,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "preact": "^10.0.0-rc.1",
+    "preact": "^10.0.0-rc.2",
     "unistore": "^3.4.1"
   },
   "devDependencies": {

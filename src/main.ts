@@ -1,6 +1,6 @@
-import { createContext }                                  from 'preact';
-import { useContext, useDebugValue, useEffect, useState } from 'preact/hooks';
-import { ActionFn, Listener, Store }                      from 'unistore';
+import { createContext }                                           from 'preact';
+import { useContext, useDebugValue, useEffect, useMemo, useState } from 'preact/hooks';
+import { ActionFn, Listener, Store }                               from 'unistore';
 
 
 // @see [typesafe-actions](https://github.com/piotrwitek/typesafe-actions)
@@ -10,10 +10,26 @@ export interface Types {
 
 type RootState = Types extends { RootState: infer T } ? T : any;
 
+// Use a local variable will cause problem if this lib and the code using it
+// required two different 'preact.js', e.g. NPM not deduped properly.
+// So use a global variable.
 export const UnistoreContext = createContext<Store<any>|null>(null);
 
+// declare global {
+//   interface Window {
+//     __WT_UNISTORE__CONTEXT__?: preact.Context<Store<any>|null>;
+//   }
+// }
+//
+// window.__WT_UNISTORE__CONTEXT__ = preact.createContext<Store<any>|null>(null);
+//
+// export const UnistoreProvider: preact.Provider<Store<any>|null> = window.__WT_UNISTORE__CONTEXT__.Provider;
+
+
 export function useStore<K = RootState>(): Store<K> {
-  const store = useContext(UnistoreContext);
+  const context = useMemo(() => UnistoreContext, []);
+  const store = useContext(context);
+  // const store = useContext(window.__WT_UNISTORE__CONTEXT__);
   if (store == null) {
     throw new Error('No unistore found!');
   }
@@ -77,16 +93,23 @@ export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K
 }
 
 
-export type ActionFnAsync<K = RootState> = (state: K, ...args: any[]) => Promise<Partial<K>|void>;
-export type ActionFnSync<K = RootState> = (state: K, ...args: any[]) => Partial<K>|void;
+export type ActionFnAsync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Promise<Partial<K>|void>;
+export type ActionFnSync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Partial<K>|void;
 export type AnyAction<K = RootState> = ActionFnAsync<K>|ActionFnSync<K>;
+export type AnyAC<K = RootState> = (...args: []) => AnyAction<K>;
 
-export function useAction<K = RootState>(actionFn: ActionFnAsync<K>): Promise<void>;
-export function useAction<K = RootState>(actionFn: ActionFnSync<K>): void;
-export function useAction<K = RootState>(actionFn: ActionFn<K>) {
+
+export interface Dispatch<K = RootState> {
+  (actionFn: ActionFnAsync<K>): Promise<void>;
+  (actionFn: ActionFnSync<K>): void;
+}
+
+function dispatch<K = RootState>(actionFn: ActionFnAsync<K>): Promise<void>;
+function dispatch<K = RootState>(actionFn: ActionFnSync<K>): void;
+function dispatch<K = RootState>(actionFn: ActionFn<K>) {
   const store = useStore<K>();
   const state = store.getState();
-  const mutated = actionFn(state);
+  const mutated = actionFn(state, store);
   if (typeof (mutated as Promise<Partial<K>>).then === 'function') {
     return (mutated as Promise<Partial<K>>).then(res => {
       store.setState(res as Pick<K, keyof K>, false, actionFn);
@@ -95,46 +118,5 @@ export function useAction<K = RootState>(actionFn: ActionFn<K>) {
   return store.setState(mutated as Pick<K, keyof K>, false, actionFn);
 }
 
-type BoundAction<F> =
-  F extends (state: infer K, ...args: infer A) => infer R ? (...args: A) => R
-    : never;
 
-export function usePrebindAction<K = RootState>(actionFn: (
-  state: K,
-) => Promise<Partial<K>|void>|Partial<K>|void): BoundAction<typeof actionFn>;
-export function usePrebindAction<A1, K = RootState>(actionFn: (
-  state: K,
-  arg1: A1,
-) => Promise<Partial<K>|void>|Partial<K>|void): BoundAction<typeof actionFn>;
-export function usePrebindAction<A1, A2, K = RootState>(actionFn: (
-  state: K,
-  arg1: A1,
-  arg2: A2,
-) => Promise<Partial<K>|void>|Partial<K>|void): BoundAction<typeof actionFn>;
-export function usePrebindAction<A1, A2, A3, K = RootState>(actionFn: (
-  state: K,
-  arg1: A1,
-  arg2: A2,
-  arg3: A3,
-) => Promise<Partial<K>|void>|Partial<K>|void): BoundAction<typeof actionFn>;
-export function usePrebindAction<A1, A2, A3, A4, K = RootState>(actionFn: (
-  state: K,
-  arg1: A1,
-  arg2: A2,
-  arg3: A3,
-  arg4: A4,
-) => Promise<Partial<K>|void>|Partial<K>|void): BoundAction<typeof actionFn>;
-export function usePrebindAction<K = RootState>(actionFn: ActionFn<K>): any {
-  const store = useStore<K>();
-  const state = store.getState();
-
-  return (...args: any[]) => {
-    const mutated = actionFn(state, ...args);
-    if (typeof (mutated as Promise<Partial<K>>).then === 'function') {
-      return (mutated as Promise<Partial<K>>).then(res => {
-        store.setState(res as Pick<K, keyof K>, false, actionFn);
-      });
-    }
-    return store.setState(mutated as Pick<K, keyof K>, false, actionFn);
-  };
-}
+export const useDispatch = <K = RootState>(): Dispatch<K> => dispatch;
