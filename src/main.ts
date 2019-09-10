@@ -93,7 +93,7 @@ export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K
 }
 
 
-export type ActionFnAsync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Promise<Partial<K>|void>;
+export type ActionFnAsync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Promise<Partial<K>|void>|void;
 export type ActionFnSync<K = RootState> = (state: K, store: Store<K>, ...args: any[]) => Partial<K>|void;
 export type AnyAction<K = RootState> = ActionFnAsync<K>|ActionFnSync<K>;
 export type AnyAC<K = RootState> = (...args: []) => AnyAction<K>;
@@ -110,15 +110,21 @@ function dispatch<K = RootState>(actionFn: ActionFn<K>) {
   const store = useStore<K>();
   const state = store.getState();
   const mutated = actionFn(state, store);
+
+  if (mutated == null) {
+    return;
+  }
+
   if (typeof (mutated as Promise<Partial<K>>).then === 'function') {
     return (mutated as Promise<Partial<K>>).then(res => {
       store.setState(res as Pick<K, keyof K>, false, actionFn);
     });
   }
+
   return store.setState(mutated as Pick<K, keyof K>, false, actionFn);
 }
 
 
 export function useDispatch<K = RootState>(): Dispatch<K> {
   return dispatch;
-};
+}
