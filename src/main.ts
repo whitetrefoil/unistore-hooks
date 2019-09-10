@@ -21,7 +21,7 @@ export function useStore<K = RootState>(): Store<K> {
 }
 
 
-type Selector<R, K = RootState> = (state: K) => R;
+export type Selector<R, K = RootState> = (state: K) => R;
 
 
 export function useSelector<R, K = RootState>(selector: Selector<R, K>): R {
@@ -77,8 +77,9 @@ export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K
 }
 
 
-type ActionFnAsync<K = RootState> = (state: K, ...args: any[]) => Promise<Partial<K>|void>;
-type ActionFnSync<K = RootState> = (state: K, ...args: any[]) => Partial<K>|void;
+export type ActionFnAsync<K = RootState> = (state: K, ...args: any[]) => Promise<Partial<K>|void>;
+export type ActionFnSync<K = RootState> = (state: K, ...args: any[]) => Partial<K>|void;
+export type AnyAction<K = RootState> = ActionFnAsync<K>|ActionFnSync<K>;
 
 export function useAction<K = RootState>(actionFn: ActionFnAsync<K>): Promise<void>;
 export function useAction<K = RootState>(actionFn: ActionFnSync<K>): void;
