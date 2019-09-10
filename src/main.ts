@@ -23,7 +23,7 @@ export const UnistoreContext = createContext<Store<any>|null>(null);
 //
 // window.__WT_UNISTORE__CONTEXT__ = preact.createContext<Store<any>|null>(null);
 //
-// export const UnistoreProvider: preact.Provider<Store<any>|null> = window.__WT_UNISTORE__CONTEXT__.Provider;
+export const UnistoreProvider: preact.Provider<Store<any>|null> = UnistoreContext.Provider;
 
 
 export function useStore<K = RootState>(): Store<K> {
@@ -119,4 +119,6 @@ function dispatch<K = RootState>(actionFn: ActionFn<K>) {
 }
 
 
-export const useDispatch = <K = RootState>(): Dispatch<K> => dispatch;
+export function useDispatch<K = RootState>(): Dispatch<K> {
+  return dispatch;
+};
