@@ -1,6 +1,6 @@
 import { createContext }                                           from 'preact';
 import { useContext, useDebugValue, useEffect, useMemo, useState } from 'preact/hooks';
-import { Action, ActionFn, Listener, Store }                       from 'unistore';
+import { Action, Listener, Store }                                 from 'unistore';
 
 
 // @see [typesafe-actions](https://github.com/piotrwitek/typesafe-actions)
@@ -48,9 +48,7 @@ export function useSelector<R, K = RootState>(selector: Selector<R, K>): R {
 
   const listener: Listener<K> = s => {
     const newVal = selector(s);
-    if (newVal !== selected) {
-      setSelected(newVal);
-    }
+    setSelected(newVal);
   };
 
   useEffect(() => {
@@ -76,9 +74,7 @@ export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K
   const listener: Listener<K> = s => {
     const newVal = selector(s);
     const nonNullNewVal = newVal == null ? fallback : newVal as NonNullable<R>;
-    if (newVal !== selected) {
-      setSelected(nonNullNewVal);
-    }
+    setSelected(nonNullNewVal);
   };
 
   useEffect(() => {
@@ -95,8 +91,8 @@ export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K
 
 interface ActionContext<K = RootState> {
   readonly state: K;
-  setState<U extends keyof K>(update: Pick<K, U>, overwrite?: boolean, action?: Action<K>): void;
   dispatch: Dispatch<K>;
+  setState<U extends keyof K>(update: Pick<K, U>, overwrite?: boolean, action?: Action<K>): void;
 }
 
 export type ActionFnAsync<K = RootState> = (context: ActionContext<K>, ...args: any[]) => Promise<Partial<K>|void>|void;

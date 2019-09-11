@@ -1,6 +1,6 @@
 {
   "name": "@whitetrefoil/unistore-hooks",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.9",
   "description": "A experimental hooks implement for unistore & preact",
   "keywords": [
     "preact",
