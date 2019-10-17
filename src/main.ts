@@ -102,7 +102,25 @@ function dispatchFactory<K = RootState>(store: Store<K>): Dispatch<K> {
 }
 
 
+/** Redux style dispatch */
 export function useDispatch<K = RootState>(): Dispatch<K> {
-  const store = useStore();
+  const store = useStore<K>();
   return useMemo(() => dispatchFactory(store), []);
+}
+
+type SetStateUpdate<K, U extends keyof K> = Pick<K, U>|((state: K) => Pick<K, U>);
+
+/** Simple setState */
+export function useSetState<K = RootState>(): <U extends keyof K>(
+  update: SetStateUpdate<K, U>,
+  overwrite?: boolean,
+) => void {
+  const store = useStore<K>();
+  return useMemo(() => (update, overwrite?) => {
+    if (typeof update === 'function') {
+      store.setState(update(store.getState()), overwrite);
+      return;
+    }
+    store.setState(update, overwrite);
+  }, []);
 }

@@ -1,11 +1,11 @@
-import delay                                                           from 'delay';
-import * as preact                                                     from 'preact';
-import * as React                                                      from 'preact/compat';
-import { Fragment }                                                    from 'preact/compat';
-import { useContext }                                                  from 'preact/hooks';
-import { act, teardown }                                               from 'preact/test-utils';
-import createStore                                                     from 'unistore';
-import { UnistoreContext, UnistoreProvider, useDispatch, useSelector } from '../src/main';
+import delay                                                                        from 'delay';
+import * as preact                                                                  from 'preact';
+import * as React                                                                   from 'preact/compat';
+import { Fragment }                                                                 from 'preact/compat';
+import { useContext }                                                               from 'preact/hooks';
+import { act, teardown }                                                            from 'preact/test-utils';
+import createStore                                                                  from 'unistore';
+import { UnistoreContext, UnistoreProvider, useDispatch, useSelector, useSetState } from '../src/main';
 
 jest.resetModules();
 
@@ -201,4 +201,111 @@ describe('useSelector & useDispatch', () => {
     expect(a.textContent).toBe('1');
     expect(b.textContent).toBe('1');
   });
+});
+
+
+describe('useSetState', () => {
+  test('as patch', async() => {
+    const store = createStore({});
+    const Consumer = () => {
+      const setState = useSetState();
+      const a = useSelector(s => s.a);
+      const b = useSelector(s => s.b);
+
+      a != null && setState({ a, b: b ?? 1 });
+
+      const onClick = () => a != null
+        ? setState({ b }, true)
+        : setState({ b, a: 1 });
+
+      return (
+        <div>
+          <div id="a">{a}</div>
+          <div id="b">{b}</div>
+          <button id="action" onClick={onClick}>btn</button>
+        </div>
+      );
+    };
+    const Debug = () => (
+      <UnistoreProvider value={store}><Consumer/></UnistoreProvider>
+    );
+
+    await render(<Debug/>);
+    const a = container!.querySelector('#a')!;
+    const b = container!.querySelector('#b')!;
+    const action = container!.querySelector('#action') as HTMLButtonElement;
+
+    expect(a.textContent).toBe('');
+    expect(b.textContent).toBe('');
+
+    await act(() => {
+      action.click();
+    });
+    expect(a.textContent).toBe('1');
+    expect(b.textContent).toBe('1');
+
+    await act(() => {
+      action.click();
+    });
+    expect(a.textContent).toBe('');
+    expect(b.textContent).toBe('1');
+
+    await act(() => {
+      action.click();
+    });
+    expect(a.textContent).toBe('1');
+    expect(b.textContent).toBe('1');
+  })
+
+  test('as function', async() => {
+    const store = createStore({});
+    const Consumer = () => {
+      const setState = useSetState();
+      const a = useSelector(s => s.a);
+      const b = useSelector(s => s.b);
+
+      a != null && setState(s => ({ ...s, b: b ?? 1 }));
+
+      const onClick = () => a != null
+        ? setState(s => ({ b }), true)
+        : setState(s => ({ ...s, a: 1 }));
+
+      return (
+        <div>
+          <div id="a">{a}</div>
+          <div id="b">{b}</div>
+          <button id="action" onClick={onClick}>btn</button>
+        </div>
+      );
+    };
+    const Debug = () => (
+      <UnistoreProvider value={store}><Consumer/></UnistoreProvider>
+    );
+
+    await render(<Debug/>);
+    const a = container!.querySelector('#a')!;
+    const b = container!.querySelector('#b')!;
+    const action = container!.querySelector('#action') as HTMLButtonElement;
+
+    expect(a.textContent).toBe('');
+    expect(b.textContent).toBe('');
+
+    await act(() => {
+      action.click();
+    });
+    expect(a.textContent).toBe('1');
+    expect(b.textContent).toBe('1');
+
+    await act(() => {
+      action.click();
+    });
+    expect(a.textContent).toBe('');
+    expect(b.textContent).toBe('1');
+
+    await act(() => {
+      action.click();
+    });
+    expect(a.textContent).toBe('1');
+    expect(b.textContent).toBe('1');
+  })
 });
