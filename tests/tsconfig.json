@@ -1,6 +1,7 @@
 {
   "extends"        : "../tsconfig.json",
   "compilerOptions": {
+    "jsxFactory": null,
     "module": "commonjs",
     "outDir": "../.building",
     "target": "es2015"
@@ -9,6 +10,7 @@
     "../declarations/**/*.d.ts",
     "../Gulpfile.js",
     "../src/**/*.ts",
+    "**/*.tsx",
     "**/*.ts"
   ]
 }

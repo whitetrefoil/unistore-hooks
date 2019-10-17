@@ -1,4 +1,4 @@
-import { createContext }                                           from 'preact';
+import preact, { createContext }                                   from 'preact';
 import { useContext, useDebugValue, useEffect, useMemo, useState } from 'preact/hooks';
 import { Action, Listener, Store }                                 from 'unistore';
 
@@ -10,26 +10,13 @@ export interface Types {
 
 type RootState = Types extends { RootState: infer T } ? T : any;
 
-// Use a local variable will cause problem if this lib and the code using it
-// required two different 'preact.js', e.g. NPM not deduped properly.
-// So use a global variable.
 export const UnistoreContext = createContext<Store<any>|null>(null);
 
-// declare global {
-//   interface Window {
-//     __WT_UNISTORE__CONTEXT__?: preact.Context<Store<any>|null>;
-//   }
-// }
-//
-// window.__WT_UNISTORE__CONTEXT__ = preact.createContext<Store<any>|null>(null);
-//
 export const UnistoreProvider: preact.Provider<Store<any>|null> = UnistoreContext.Provider;
-
 
 export function useStore<K = RootState>(): Store<K> {
   const context = useMemo(() => UnistoreContext, []);
   const store = useContext(context);
-  // const store = useContext(window.__WT_UNISTORE__CONTEXT__);
   if (store == null) {
     throw new Error('No unistore found!');
   }
@@ -63,39 +50,16 @@ export function useSelector<R, K = RootState>(selector: Selector<R, K>): R {
 }
 
 
-export function useSelectorFallback<R, F, K = RootState>(selector: Selector<R, K>, fallback: F): NonNullable<R>|F {
-  const store = useStore<K>();
-  const state = store.getState();
-  const _selected = selector(state);
-  const nonNullableSelected = _selected == null ? fallback : _selected as NonNullable<R>;
-
-  const [selected, setSelected] = useState<NonNullable<R>|F>(nonNullableSelected);
-
-  const listener: Listener<K> = s => {
-    const newVal = selector(s);
-    const nonNullNewVal = newVal == null ? fallback : newVal as NonNullable<R>;
-    setSelected(nonNullNewVal);
-  };
-
-  useEffect(() => {
-    store.subscribe(listener);
-    return () => {
-      store.unsubscribe(listener);
-    };
-  }, []);
-
-  useDebugValue(selected);
-  return selected;
-}
-
-
 interface ActionContext<K = RootState> {
   readonly state: K;
+  readonly s: K;
   dispatch: Dispatch<K>;
+  dis: Dispatch<K>;
   setState<U extends keyof K>(update: Pick<K, U>, overwrite?: boolean, action?: Action<K>): void;
+  set<U extends keyof K>(update: Pick<K, U>, overwrite?: boolean, action?: Action<K>): void;
 }
 
-export type ActionFnAsync<K = RootState> = (context: ActionContext<K>, ...args: any[]) => Promise<Partial<K>|void>|void;
+export type ActionFnAsync<K = RootState> = (context: ActionContext<K>, ...args: any[]) => Promise<Partial<K>|void>;
 export type ActionFnSync<K = RootState> = (context: ActionContext<K>, ...args: any[]) => Partial<K>|void;
 export type AnyAction<K = RootState> = ActionFnAsync<K>|ActionFnSync<K>;
 export type AnyAC<K = RootState> = (...args: []) => AnyAction<K>;
@@ -106,32 +70,39 @@ export interface Dispatch<K = RootState> {
   (actionFn: ActionFnSync<K>): void;
 }
 
-function dispatch<K = RootState>(actionFn: ActionFnAsync<K>): Promise<void>;
-function dispatch<K = RootState>(actionFn: ActionFnSync<K>): void;
-function dispatch<K = RootState>(actionFn: ActionFnAsync<K>|ActionFnSync<K>) {
-  const store = useStore<K>();
-  const state = store.getState();
-  const context: ActionContext<K> = {
-    state,
-    setState: store.setState,
-    dispatch,
-  };
-  const mutated = actionFn(context);
+function dispatchFactory<K = RootState>(store: Store<K>): Dispatch<K> {
+  function dispatch(actionFn: ActionFnAsync<K>): Promise<void>;
+  function dispatch(actionFn: ActionFnSync<K>): void;
+  function dispatch(actionFn: AnyAction<K>) {
+    const state = store.getState();
+    const context: ActionContext<K> = {
+      state,
+      s       : state,
+      setState: store.setState,
+      set     : store.setState,
+      dispatch,
+      dis     : dispatch,
+    };
+    const mutated = actionFn(context);
 
-  if (mutated == null) {
-    return;
+    if (mutated == null) {
+      return;
+    }
+
+    if (typeof (mutated as Promise<Partial<K>>).then === 'function') {
+      return (mutated as Promise<Partial<K>>).then(res => {
+        store.setState(res as Pick<K, keyof K>, false, actionFn as any);
+      });
+    }
+
+    return store.setState(mutated as Pick<K, keyof K>, false, actionFn as any);
   }
 
-  if (typeof (mutated as Promise<Partial<K>>).then === 'function') {
-    return (mutated as Promise<Partial<K>>).then(res => {
-      store.setState(res as Pick<K, keyof K>, false, actionFn as any);
-    });
-  }
-
-  return store.setState(mutated as Pick<K, keyof K>, false, actionFn as any);
+  return dispatch;
 }
 
 
 export function useDispatch<K = RootState>(): Dispatch<K> {
-  return dispatch;
+  const store = useStore();
+  return useMemo(() => dispatchFactory(store), []);
 }
