@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir"          : "lib/common",
     "declaration"     : false,
+    "declarationDir"  : null,
     "target"          : "es5",
     "lib"             : ["esnext", "dom", "dom.iterable"],
     "module"          : "commonjs",
