@@ -1,6 +1,6 @@
 import preact, { createContext }                                   from 'preact';
 import { useContext, useDebugValue, useEffect, useMemo, useState } from 'preact/hooks';
-import { Action, Listener, Store }                                 from 'unistore';
+import { Action, Listener, Store, Unsubscribe }                    from 'unistore';
 
 
 // @see [typesafe-actions](https://github.com/piotrwitek/typesafe-actions)
@@ -123,4 +123,11 @@ export function useSetState<K = RootState>(): <U extends keyof K>(
     }
     store.setState(update, overwrite);
   }, []);
+}
+
+
+/** Experimental */
+export function useListener<K = RootState>(listener: Listener<K>): Unsubscribe {
+  const store = useStore<K>();
+  return store.subscribe(listener);
 }
